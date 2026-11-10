@@ -4,7 +4,7 @@
         <div class="mb-4 flex items-center gap-3">
             <label for="months" class="font-semibold">Antal månader (Markering):</label>
             <select id="months" v-model.number="selectedMonths"
-                class="rounded border border-primary-light bg-white px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary">
+                class="rounded border border-primary-light bg-white px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm">
                 <option v-for="m in [9, 10, 11, 12]" :key="m" :value="m">{{ m }}</option>
             </select>
         </div>
@@ -30,14 +30,20 @@
                     <tr class="border-b border-surface">
                         <td class="px-2 py-2">
                             <input type="text" v-model="row.doctor" placeholder="Namn"
-                                class="w-full rounded border border-primary-light px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary">
+                                class="w-full rounded border border-primary-light px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary"
+                                :class="rowRules(row).doctor ? 'border-red-400' : ''">
                         </td>
                         <td class="px-2 py-2">
                             <button type="button" @click="openRow = openRow === row.id ? null : row.id"
                                 class="flex w-full cursor-pointer items-center justify-between gap-2 rounded border px-2 py-1 text-left"
-                                :class="openRow === row.id
-                                    ? 'border-primary ring-2 ring-primary'
-                                    : 'border-primary-light hover:border-primary'">
+                                :class="[
+                                        openRow === row.id
+                                            ? 'border-primary ring-2 ring-primary'
+                                            : 'border-primary-light hover:border-primary',
+                                        rowRules(row).intervals
+                                            ? 'border-red-400'
+                                            : ''
+                                    ]">
                                 <span :class="intervalString(row.intervals) ? '' : 'text-gray-400'">
                                     {{ intervalString(row.intervals) || 'Välj dagar' }}
                                 </span>
@@ -46,10 +52,13 @@
                         </td>
                         <td class="px-2 py-2">
                             <input type="number" v-model.number="row.maxPatients" min="0" placeholder="∞"
-                                class="w-full rounded border border-primary-light px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary">
+                                class="w-full rounded border border-primary-light px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
+                                :class="rowRules(row).maxPatients
+                                            ? 'border-red-400'
+                                            : ''">
                         </td>
                         <td class="px-2 py-2 text-center">
-                            <button type="button" @click="removeRow(i)" aria-label="Ta bort"
+                            <button type="button" @click="removeRow(i, row)" aria-label="Ta bort"
                                 class="cursor-pointer rounded border border-primary-light px-2 py-1 leading-none hover:border-red-400 hover:bg-red-50 hover:text-red-600">
                                 ✕
                             </button>
@@ -59,12 +68,13 @@
                     <tr v-show="openRow === row.id" class="border-b border-surface">
                         <td colspan="4" class="bg-surface px-2 py-3">
                             <div class="flex flex-wrap items-start gap-4">
-                                <div class="grid grid-cols-7 gap-1">
+                                <div class="grid grid-cols-7 gap-1" @mouseleave="hoverDay = null">
                                     <button v-for="day in days" :key="day.day" type="button"
-                                        @click="toggleInterval(row.intervals, day, $event)"
+                                        @click="toggleRowInterval(row.intervals, day, $event)"
+                                        @mouseenter="hoverDay = day.day" @mousemove="shiftPressed = $event.shiftKey"
                                         :disabled="day.selected && !row.intervals.includes(day.day)"
-                                        class="h-9 w-10 cursor-pointer rounded border border-primary-light text-sm transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:line-through disabled:hover:bg-gray-100"
-                                        :class="row.intervals.includes(day.day) ? 'bg-green-200 border-green-500 hover:bg-green-300' : 'bg-white'">
+                                        class="h-9 w-10 cursor-pointer rounded border text-sm transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:line-through disabled:hover:bg-gray-100 font-mono"
+                                        :class="row.intervals.includes(day.day) ? 'bg-green-200 border-green-500 hover:bg-green-300' : isInPreview(row, day) ? 'bg-green-100 border-dashed border-green-500' : 'bg-white border-primary-light'">
                                         {{ day.day }}
                                     </button>
                                 </div>
@@ -93,7 +103,7 @@
     </div>
 
     <!-- Pinned footer -->
-    <div class="border-t border-primary-light bg-surface px-4 py-3">
+    <div class="border-t border-primary-light bg-surface px-4 py-3 sticky bottom-0">
         <div v-if="errorMsg" class="mb-3 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
             {{ errorMsg }}
         </div>
@@ -148,9 +158,6 @@
     const cachedSelectedMonths = ${ JSON.stringify(selectedMonths || 12)};
     const isTest = ${ JSON.stringify(isTest)};
 
-    const interval = 7;
-    const maxDaysThisMonth = 31;
-
     const { createApp, ref, reactive, computed } = Vue;
 
     const app = createApp({
@@ -170,6 +177,10 @@
 
             const openRow = ref(null);
 
+            const lastDayClicked = ref(null);
+            const hoverDay = ref(null);
+            const shiftPressed = ref(false);
+
             const days = ref(Array.from({ length: 31 }, (_, i) => {
                 return {
                     day: i + 1,
@@ -177,26 +188,98 @@
                 }
             }));
 
+            const allIntervals = computed(() => rows.value.flatMap(r => r.intervals));
+
+            const rowRules = (row) => {
+                const raw = String(row.maxPatients ?? '').trim();
+                const maxPatients = raw === '' ? null : parseInt(raw);
+                return {
+                    doctor: !row.doctor.trim(),
+                    maxPatients: maxPatients !== null && (isNaN(maxPatients) || maxPatients < 0),
+                    intervals: row.intervals.length <= 0,
+                };
+            }
+
+            // Per-row field errors, e.g. [{ doctor: true, maxPatients: false }, {...}]
+            const rowErrors = computed(() => rows.value.map(rowRules));
+
+            const groups = computed(() => rows.value
+                .filter(r => r.doctor.trim())
+                .map(r => {
+                    const raw = String(r.maxPatients ?? '').trim();
+                    return {
+                        doctor: r.doctor.trim(),
+                        maxPatients: raw === '' ? null : parseInt(raw),
+                        intervals: r.intervals
+                    };
+                }));
+
+            const hasFieldErrors = computed(() => rowErrors.value.some(e => Object.values(e).some(Boolean)));
+            const isValid = computed(() => !hasFieldErrors.value && groups.value.length > 0);
+
+            const errorMsg = computed(() => {
+                return groups.value.length === 0 ? 'Lägg till minst en läkare'
+                    : hasFieldErrors.value ? 'Kontrollera markerade fält'
+                        : ''
+            });
+
+            onMounted(() => {
+                const shiftKey = (key) => key === 'Shift';
+
+                addEventListener('keydown', (event) => {
+                    if (shiftKey(event.key)) {
+                        shiftPressed.value = true;
+                    }
+                });
+
+                addEventListener('keyup', (event) => {
+                    if (shiftKey(event.key)) {
+                        shiftPressed.value = false;
+                    }
+                });
+            });
+
             function addRow() {
                 rows.value.push(makeRow());
             }
 
-            function removeRow(i) {
-                if (rows.value.length > 1) rows.value.splice(i, 1);
+            function removeRow(i, row) {
+                if (rows.value.length > 1) {
+                    rows.value.splice(i, 1);
+                    clearRowIntervals(row)
+                }
             }
 
-            function toggleInterval(intervals, day, event) {
-                const index = intervals.indexOf(day.day);
+            function isInPreview(row, day) {
+                if (!shiftPressed.value || lastDayClicked.value === null || hoverDay.value === null) return false;
+                if (openRow.value !== row.id) return false;
+                if (day.selected && !row.intervals.includes(day.day)) return false; // taken by another doctor
 
-                console.log('event', event);
+                const lo = Math.min(lastDayClicked.value, hoverDay.value);
+                const hi = Math.max(lastDayClicked.value, hoverDay.value);
+                return day.day >= lo && day.day <= hi;
+            }
 
-                day.selected = !day.selected;
-
-                if (index === -1) {
-                    intervals.push(day.day);
+            function toggleRowInterval(intervals, day, event) {
+                if (event && event.shiftKey && lastDayClicked.value !== null) {
+                    // Commit the previewed range
+                    const lo = Math.min(lastDayClicked.value, day.day);
+                    const hi = Math.max(lastDayClicked.value, day.day);
+                    for (let d = lo; d <= hi; d++) {
+                        const dayObj = days.value[d - 1];
+                        if (!intervals.includes(d) && !dayObj.selected) {
+                            intervals.push(d);
+                            dayObj.selected = true;
+                        }
+                    }
                 } else {
-                    intervals.splice(index, 1);
+                    // Single toggle, as before
+                    const index = intervals.indexOf(day.day);
+                    day.selected = !day.selected;
+                    if (index === -1) intervals.push(day.day);
+                    else intervals.splice(index, 1);
                 }
+                lastDayClicked.value = day.day;
             }
 
             function clearRowIntervals(row) {
@@ -221,41 +304,9 @@
                 }
 
                 return ranges
-                    .map(([start, end]) => (start === end ? `${start}` : `${start}-${end}`))
+                    .map(([start, end]) => (start === end ? start : start + "-" + end))
                     .join(", ");
             }
-
-            const allIntervals = computed(() => rows.value.flatMap(r => r.intervals));
-
-            console.log(allIntervals);
-
-            // Per-row field errors, e.g. [{ doctor: true, maxPatients: false }, {...}]
-            const rowErrors = computed(() => rows.value.map(r => {
-                const raw = String(r.maxPatients ?? '').trim();
-                const maxPatients = raw === '' ? null : parseInt(raw);
-                return {
-                    doctor: !r.doctor.trim(),
-                    maxPatients: maxPatients !== null && (isNaN(maxPatients) || maxPatients < 0),
-                };
-            }));
-
-            const groups = computed(() => rows.value
-                .filter(r => r.doctor.trim())
-                .map(r => {
-                    const raw = String(r.maxPatients ?? '').trim();
-                    return {
-                        doctor: r.doctor.trim(),
-                        maxPatients: raw === '' ? null : parseInt(raw),
-                        intervals: r.intervals
-                    };
-                }));
-
-            const hasFieldErrors = computed(() => rowErrors.value.some(e => Object.values(e).some(Boolean)));
-            const isValid = computed(() => !hasFieldErrors.value && groups.value.length > 0);
-            const errorMsg = computed(() =>
-                groups.value.length === 0 ? 'Lägg till minst en läkare'
-                    : hasFieldErrors.value ? 'Kontrollera markerade fält'
-                        : '');
 
             function confirm() {
                 if (!isValid.value) return;
@@ -273,8 +324,8 @@
 
                 // On the local dev server there is no handler for manatee: URLs
                 if (['localhost', '127.0.0.1'].includes(location.hostname)) {
-                    console.log('[dev] would navigate to:', url);
-                    console.log('[dev] result:', result);
+                    console.log('[dev]', 'would navigate to:', url);
+                    console.log('[dev]', 'result:', result);
                     return;
                 }
                 window.location = url;
@@ -289,13 +340,16 @@
                 isValid,
                 errorMsg,
                 openRow,
+                allIntervals,
+                hoverDay,
                 addRow,
                 removeRow,
-                toggleInterval,
+                toggleRowInterval,
+                isInPreview,
                 clearRowIntervals,
+                rowRules,
                 intervalString,
                 confirm,
-                allIntervals,
             };
         },
     });
