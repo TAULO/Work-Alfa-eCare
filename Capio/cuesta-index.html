@@ -143,6 +143,42 @@
         }
 </style>
 
+<style>
+    /* Undo the Sticky template's styles so Tailwind's layered utilities apply */
+    html,
+    body,
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    p,
+    a,
+    span,
+    div,
+    ul,
+    ol,
+    li,
+    form {
+        overflow: revert-layer;
+        overflow-x: revert-layer;
+        overflow-y: revert-layer;
+        color: revert-layer;
+        background-color: revert-layer;
+        font-family: revert-layer;
+        user-select: revert-layer;
+        -webkit-user-select: revert-layer;
+    }
+
+    html,
+    body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+    }
+</style>
+
 <!-- VUE -->
 <script src="https://unpkg.com/vue@3.5.13/dist/vue.global.prod.js"></script>
 <!-- TAILWIND -->
@@ -158,7 +194,7 @@
     const cachedSelectedMonths = ${ JSON.stringify(selectedMonths || 12)};
     const isTest = ${ JSON.stringify(isTest)};
 
-    const { createApp, ref, reactive, computed } = Vue;
+    const { createApp, ref, reactive, computed, onMounted, watch } = Vue;
 
     const app = createApp({
         setup() {
