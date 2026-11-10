@@ -1,0 +1,461 @@
+<div class="results">
+    <div class="summary-container"></div>
+    <div class="table-block">
+        <div class="table-heading">
+            <span class="status-dot failed"></span>
+            <span>Misslyckades</span>
+            <span class="patient-count failed"></span>
+        </div>
+        <table id="failed-table" class="result-table failed">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Personnr</th>
+                    <th>Ålder</th>
+                    <th>Saknad diagnose</th>
+                    <th>Orsak</th>
+                    <th>Diagnosis</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    <div class="table-block">
+        <div class="table-heading">
+            <span class="status-dot ok"></span>
+            <span>Lyckades</span>
+            <span class="patient-count succeeded"></span>
+        </div>
+        <table id="succeeded-table" class="result-table ok">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Personnr</th>
+                    <th>Ålder</th>
+                    <th>Saknad diagnose</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    <!-- <button onclick="closeSticky()">Close Sticky</button> -->
+</div>
+<div id="toaster" style="display: none;">
+    <p></p>
+</div>
+<script>
+    const succeeded = [];
+    // const failed = [{ "pid": "195507139961", "age": "71", "missingDiagnosis": "DEHMS", "reason": "Patienten har inte gett samtycke" }, { "pid": "195104149827", "age": "75", "missingDiagnosis": "FH", "reason": "Patienten finns inte i Flow" }, { "pid": "198612282395", "age": "39", "missingDiagnosis": "ABEZ", "reason": "Patienten har inte gett samtycke" }, { "pid": "197601232395", "age": "50", "missingDiagnosis": "HI", "reason": "Patienten har skyddad identitet" }, { "pid": "196605029922", "age": "60", "missingDiagnosis": "ABOS", "reason": "Utskicket avbröts av användaren (exthotau) vid kontroll" }, { "pid": "197308039846", "age": "53", "missingDiagnosis": "HOS", "reason": "Patienten har inte gett samtycke" }, { "pid": "181111111116", "age": "46", "missingDiagnosis": "ABDO", "reason": "Patienten finns inte i Flow" }];
+    const failed = [{ "pid": "195507139961", "age": "71", "missingDiagnosis": "DEHMS", "reason": "Patienten har inte gett samtycke", "diagnosis": ["H"] }, { "pid": "195104149827", "age": "75", "missingDiagnosis": "FH", "reason": "Patienten finns inte i Flow", "diagnosis": ["H"] }, { "pid": "198612282395", "age": "39", "missingDiagnosis": "ABEZ", "reason": "Patienten har inte gett samtycke", "diagnosis": ["A"] }, { "pid": "197601232395", "age": "50", "missingDiagnosis": "HI", "reason": "Patienten har skyddad identitet", "diagnosis": ["H"] }, { "pid": "196605029922", "age": "60", "missingDiagnosis": "ABOS", "reason": "Utskicket avbröts av användaren (exthotau) vid kontroll", "diagnosis": ["A"] }, { "pid": "197308039846", "age": "53", "missingDiagnosis": "HOSA", "reason": "Patienten har inte gett samtycke", "diagnosis": ["HA"] }, { "pid": "181111111116", "age": "46", "missingDiagnosis": "ABDO", "reason": "Patienten finns inte i Flow", "diagnosis": ["A"] }];
+
+    let currentTimer = null;
+
+    const succeededCount = succeeded.length;
+    const failedCount = failed.length;
+    const total = succeededCount + failedCount;
+
+    const summaries = [
+        { key: "total", label: "Totalt", value: total },
+        { key: "failed", label: "Misslyckades", value: failedCount },
+        { key: "succeeded", label: "Lyckades", value: succeededCount },
+    ];≤
+
+    const body = document.body;
+    const tBodySucceded = document.querySelector("#succeeded-table tbody");
+    const tBodyFailed = document.querySelector("#failed-table tbody");
+    const summaryContainer = document.querySelector(".summary-container");
+
+    (() => {
+        // succeeded.forEach((item, index) => addRow(tBodySucceded, [(index + 1), ...Object.values(item)]));
+        // failed.forEach((item, index) => addRow(tBodyFailed, [(index + 1), ...Object.values(item)]));
+
+        addRows(tBodySucceded, succeeded);
+        addRows(tBodyFailed, failed);
+
+        addSummary();
+        addPatientCount();
+    })()
+
+    function addRows(tbody, items) {
+        items.forEach((item, index) => {
+            const tr = document.createElement("tr");
+            const pid = item.pid;
+
+            tbody.appendChild(tr);
+            tr.addEventListener("click", () => copyToClipboard(pid));
+
+            const td = document.createElement("td");
+            td.innerText = (index + 1);
+            tr.appendChild(td);
+
+            Object.values(item).forEach(val => {
+                const td = document.createElement("td");
+                td.innerText = val;
+
+                tr.appendChild(td);
+            })
+
+        });
+    }
+
+    function addRow(tbody, values) {
+        const tr = document.createElement("tr");
+        const pid = values[1];
+
+        tr.dataset.patient = JSON.stringify(values);
+        tbody.appendChild(tr);
+        tr.addEventListener("click", () => copyToClipboard(pid));
+
+        values.forEach((val, i) => {
+            if (i === 3) {
+                const diagnosis = values[3].split("");
+                const td = document.createElement("td");
+                const diagnose = values[5];
+                for (let j = 0; j < diagnosis.length; j++) {
+                    const d = diagnosis[j]
+                    const span = document.createElement("span");
+
+                    for (let k = 0; k < diagnose.length; k++) {
+                        if (diagnose[k].includes(d)) {
+                            span.className = 'highlight'
+                        }
+                    }
+
+                    span.innerText = d;
+                    td.appendChild(span)
+                }
+
+                tr.appendChild(td)
+            } else {
+                const td = document.createElement("td");
+                td.innerText = val;
+
+                tr.appendChild(td);
+            }
+
+        });
+    }
+
+    function addSummary() {
+        for (const { key, label, value } of summaries) {
+            const card = document.createElement("div");
+            const labelDiv = document.createElement("div");
+            const resultDiv = document.createElement("div");
+
+            card.className = "summary " + key;
+
+            labelDiv.className = "summary-label";
+            resultDiv.className = "summary-result";
+            labelDiv.innerText = label;
+            resultDiv.innerText = value;
+
+            card.append(labelDiv, resultDiv);
+            summaryContainer.appendChild(card);
+        }
+    }
+
+    function addPatientCount() {
+        const patientCountSucceeded = document.querySelector(".patient-count.succeeded");
+        const patientCountFailed = document.querySelector(".patient-count.failed");
+
+        const plural = (count) => count !== 1 ? "er" : "";
+
+        patientCountSucceeded.innerText = succeededCount + " patient" + plural(succeededCount);
+        patientCountFailed.innerText = failedCount + " patient" + plural(failedCount);
+    }
+
+    function showToast(msg) {
+        if (currentTimer) {
+            clearTimeout(currentTimer);
+        }
+
+        const toast = document.getElementById("toaster");
+        toast.querySelector("p").innerText = msg;
+
+        toast.classList.remove("hide");
+        toast.style.display = "flex";
+
+        currentTimer = setTimeout(() => {
+            toast.classList.add("hide");
+
+            toast.addEventListener("animationend", () => {
+                toast.style.display = "none";
+            }, { once: true });
+
+        }, 2000);
+    }
+
+    function copyToClipboard(data) {
+        let ok = false;
+        try {
+            const ta = document.createElement("textarea");
+            ta.value = data;
+            ta.style.position = "fixed";
+            ta.style.opacity = "0";
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            ok = document.execCommand("copy");   // deprecated, but works in these old contexts
+            document.body.removeChild(ta);
+        } catch (e) {
+            ok = false;
+        }
+
+        if (ok) {
+            showToast("Kopierade patient (" + data + ")");
+        } else {
+            showToast("Kunde inte kopiera patient");
+        }
+    }
+
+    function closeSticky() {
+        window.location = "manatee:runflow/withsubject/close_massutskicks_sticky";
+
+    }
+</script>
+
+<style>
+    :root {
+        --color-succeed-rgb: 26, 127, 82;
+        --color-failed-rgb: 192, 57, 43;
+
+        --radius: 10px;
+    }
+
+    html,
+    body {
+        overflow: auto !important;
+    }
+
+    html,
+    body,
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    p,
+    a,
+    span,
+    div,
+    ul,
+    ol,
+    li,
+    form {
+        user-select: text !important;
+        color: inherit !important;
+        background-color: transparent !important;
+    }
+
+    .results {
+        font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+        color: #1f2328;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .summary-container {
+        display: flex;
+        gap: 0.5rem;
+
+        .summary {
+            border-radius: 10px;
+            background-color: #1a1a19 !important;
+            border-radius: var(--radius);
+            color: white !important;
+            padding: 0.75rem 1rem;
+            width: 100%;
+        }
+
+        .summary.succeeded {
+            background-color: rgba(var(--color-succeed-rgb), 0.2) !important;
+            color: rgba(var(--color-succeed-rgb), 1) !important;
+        }
+
+        .summary.failed {
+            background-color: rgba(var(--color-failed-rgb), 0.2) !important;
+            color: rgba(var(--color-failed-rgb), 1) !important;
+        }
+
+        .summary-label {
+            font-size: 13px;
+        }
+
+        .summary-result {
+            font-size: 24px;
+            font-weight: 500;
+        }
+
+    }
+
+    .table-heading {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 15px;
+        font-weight: 500;
+        margin-bottom: 8px;
+
+        .status-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-dot.ok {
+            background-color: rgba(var(--color-succeed-rgb), 1) !important;
+        }
+
+        .status-dot.failed {
+            background-color: rgba(var(--color-failed-rgb), 1) !important;
+        }
+
+        .patient-count {
+            margin-left: auto;
+        }
+    }
+
+
+    .result-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        border: 1px solid #e2e4e7;
+        border-radius: var(--radius);
+        overflow: hidden;
+    }
+
+    .result-table thead th {
+        text-align: left;
+        padding: 10px 14px;
+        font-size: 12px;
+        letter-spacing: 0.02em;
+    }
+
+    .result-table.ok thead th {
+        background-color: rgba(var(--color-succeed-rgb), 0.1);
+        color: rgba(var(--color-succeed-rgb), 1);
+    }
+
+    .result-table.failed thead th {
+        background-color: rgba(var(--color-failed-rgb), 0.1);
+        color: rgba(var(--color-failed-rgb), 1);
+    }
+
+    .result-table tbody td {
+        padding: 9px 14px;
+        border-top: 1px solid #eef0f2;
+        vertical-align: top;
+    }
+
+    .result-table tbody tr:nth-child(even) {
+        background-color: #fafbfc;
+    }
+
+    .result-table tbody tr:hover {
+        background-color: #f2f4f6;
+        cursor: pointer;
+    }
+
+    /* # */
+    .result-table th:nth-child(1),
+    .result-table td:nth-child(1) {
+        width: 40px;
+    }
+
+    /* Personnr */
+    .result-table th:nth-child(2),
+    .result-table td:nth-child(2) {
+        width: 150px;
+    }
+
+    /* Ålder */
+    .result-table th:nth-child(3),
+    .result-table td:nth-child(3) {
+        width: 70px;
+    }
+
+    #toaster {
+        position: fixed !important;
+        top: 10px !important;
+        right: 10px !important;
+        left: auto !important;
+        bottom: auto !important;
+        z-index: 9999 !important;
+
+        display: none;
+        align-items: center;
+        gap: 10px;
+        min-width: 200px;
+        padding: 12px 16px;
+        border-radius: 10px;
+        background-color: rgb(var(--color-succeed-rgb)) !important;
+        box-shadow: 0 8px 24px rgba(149, 157, 165, 0.25);
+        line-height: 1.4;
+        animation: slideIn 0.5s ease forwards;
+
+        p {
+            color: white !important;
+            margin: 0;
+        }
+    }
+
+    #toaster.hide {
+        animation: slideOut ease 0.5s forwards;
+    }
+
+    .close-btn {
+        font-family: 'Lato', 'Segoe UI', sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        color: white !important;
+        background-color: rgba(var(--color-succeed-rgb), 1) !important;
+        border: none;
+        border-radius: var(--radius);
+        padding: 8px 20px;
+        cursor: pointer;
+        user-select: none !important;
+        transition: opacity 0.15s ease;
+    }
+
+    .close-btn:hover {
+        opacity: 0.85;
+    }
+
+    .close-btn:active {
+        opacity: 0.7;
+
+    }
+
+    span.highlight {
+        color: red !important;
+        font-weight: bold;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+</style>
