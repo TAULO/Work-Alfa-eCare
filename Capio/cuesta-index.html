@@ -58,7 +58,7 @@
                                             : ''">
                         </td>
                         <td class="px-2 py-2 text-center">
-                            <button type="button" @click="removeRow(i, row)" aria-label="Ta bort"
+                            <button type="button" @click="removeRow(i)" aria-label="Ta bort"
                                 class="cursor-pointer rounded border border-primary-light px-2 py-1 leading-none hover:border-red-400 hover:bg-red-50 hover:text-red-600">
                                 ✕
                             </button>
@@ -115,7 +115,8 @@
 
         <div class="flex items-center justify-between gap-4">
             <button type="button" @click="confirm"
-                class="cursor-pointer rounded bg-primary px-6 py-2 font-semibold text-white hover:bg-navy">
+                class="rounded px-6 py-2 font-semibold bg-primary text-white transition-colors disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:hover:bg-gray-100"
+                :disabled="!isValid">
                 Bekräfta
             </button>
             <div class="flex flex-col gap-1 text-sm">
@@ -273,17 +274,23 @@
                         shiftPressed.value = false;
                     }
                 });
+
+
+                rows.value.forEach((row) => {
+                    row.intervals.forEach((day) => {
+                        if (days.value[day - 1]) days.value[day - 1].selected = true;
+                    });
+                });
             });
 
             function addRow() {
                 rows.value.push(makeRow());
             }
 
-            function removeRow(i, row) {
-                if (rows.value.length > 1) {
-                    rows.value.splice(i, 1);
-                    clearRowIntervals(row)
-                }
+            function removeRow(i) {
+                if (rows.value.length <= 1) return;
+                clearRowIntervals(rows.value[i]);
+                rows.value.splice(i, 1);
             }
 
             function isInPreview(row, day) {
