@@ -230,6 +230,11 @@
             const rowRules = (row) => {
                 const raw = String(row.maxPatients ?? '').trim();
                 const maxPatients = raw === '' ? null : parseInt(raw);
+
+                // ignore below for now
+                const allDoctors = rows.value.map(r => r.doctor);
+                const hasDuplicateDoctors = new Set(allDoctors).size !== allDoctors.length
+
                 return {
                     doctor: !row.doctor.trim(),
                     maxPatients: maxPatients !== null && (isNaN(maxPatients) || maxPatients < 0),
@@ -275,7 +280,7 @@
                     }
                 });
 
-
+                // set selected rows to true from cached data
                 rows.value.forEach((row) => {
                     row.intervals.forEach((day) => {
                         if (days.value[day - 1]) days.value[day - 1].selected = true;
