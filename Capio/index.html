@@ -109,8 +109,13 @@
         </div>
 
         <div v-if="allIntervals.length > 0"
+            class="mb-3 rounded border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700">
+            Tilldelade dagar: {{ intervalString(allIntervals) }}
+        </div>
+
+        <div v-if="missingDays.length > 0"
             class="mb-3 rounded border border-yellow-300 bg-yellow-50 px-3 py-2 text-sm text-yellow-700">
-            Dagar som saknas: {{ intervalString(allIntervals) }}
+            Dagar som saknas: {{ intervalString(missingDays) }}
         </div>
 
         <div class="flex items-center justify-between gap-4">
@@ -190,6 +195,13 @@
             }));
 
             const allIntervals = computed(() => rows.value.flatMap(r => r.intervals));
+
+            const missingDays = computed(() => {
+                const used = new Set(allIntervals.value);
+                return days.value
+                    .map(d => d.day)
+                    .filter(d => !used.has(d));
+            });
 
             const rowRules = (row) => {
                 const raw = String(row.maxPatients ?? '').trim();
@@ -353,6 +365,7 @@
                 errorMsg,
                 openRow,
                 allIntervals,
+                missingDays,
                 hoverDay,
                 addRow,
                 removeRow,
