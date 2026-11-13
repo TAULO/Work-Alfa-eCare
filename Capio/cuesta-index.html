@@ -256,25 +256,11 @@
 
             // Per-row field errors, e.g. [{ doctor: true, maxPatients: false }, {...}]
             const rowErrors = computed(() => rows.value.map(rowRules));
-
-            const groups = computed(() => rows.value
-                .filter(r => r.doctor.trim())
-                .map(r => {
-                    const raw = String(r.maxPatients ?? '').trim();
-                    return {
-                        doctor: r.doctor.trim(),
-                        maxPatients: raw === '' ? null : parseInt(raw),
-                        intervals: r.intervals
-                    };
-                }));
-
             const hasFieldErrors = computed(() => rowErrors.value.some(e => Object.values(e).some(Boolean)));
-            const isValid = computed(() => !hasFieldErrors.value && groups.value.length > 0);
+            const isValid = computed(() => !hasFieldErrors.value);
 
             const errorMsg = computed(() => {
-                return groups.value.length === 0 ? 'Lägg till minst en läkare'
-                    : hasFieldErrors.value ? 'Kontrollera markerade fält'
-                        : ''
+                return hasFieldErrors.value ? 'Kontrollera markerade fält' : '';
             });
 
             onMounted(() => {
@@ -333,7 +319,6 @@
                         }
                     }
                 } else {
-                    // Single toggle, as before
                     const index = intervals.indexOf(day.day);
                     day.selected = !day.selected;
                     if (index === -1) intervals.push(day.day);
