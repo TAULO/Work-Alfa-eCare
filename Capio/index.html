@@ -227,6 +227,16 @@
                 return hasFieldErrors.value ? 'Kontrollera markerade fält' : '';
             });
 
+            const groups = computed(() => rows.value
+                .map(r => {
+                    const raw = String(r.maxPatients ?? '').trim();
+                    return {
+                        doctor: r.doctor.trim(),
+                        maxPatients: raw === '' ? null : parseInt(raw),
+                        intervals: r.intervals
+                    };
+                }));
+
             onMounted(() => {
                 const shiftKey = (key) => key === 'Shift';
 
