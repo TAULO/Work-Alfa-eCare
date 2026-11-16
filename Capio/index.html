@@ -74,7 +74,8 @@
                                         @mouseenter="hoverDay = day.day" @mousemove="shiftPressed = $event.shiftKey"
                                         :disabled="day.selected && !row.intervals.includes(day.day)"
                                         class="h-9 w-10 cursor-pointer rounded border text-sm transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:line-through disabled:hover:bg-gray-100 font-mono"
-                                        :class="row.intervals.includes(day.day) ? 'bg-green-200 border-green-500 hover:bg-green-300' : isInPreview(row, day) ? 'bg-green-100 border-dashed border-green-500' : 'bg-white border-primary-light'">
+                                        :class="row.intervals.includes(day.day) ? 'bg-green-200 border-green-500 hover:bg-green-300' : isInPreview(row, day) ? 'bg-green-100 border-dashed border-green-500' : 'bg-white border-primary-light'"
+                                        :title="row.intervals.includes(day.day) ? '' : dayOwnerTitle(day.day)">
                                         {{ day.day }}
                                     </button>
                                 </div>
@@ -203,21 +204,6 @@
                     .filter(d => !used.has(d));
             });
 
-            const rowRules = (row) => {
-                const raw = String(row.maxPatients ?? '').trim();
-                const maxPatients = raw === '' ? null : parseInt(raw);
-
-                // ignore below for now
-                const allDoctors = rows.value.map(r => r.doctor);
-                const hasDuplicateDoctors = new Set(allDoctors).size !== allDoctors.length
-
-                return {
-                    doctor: !row.doctor.trim(),
-                    maxPatients: maxPatients !== null && (isNaN(maxPatients) || maxPatients < 0),
-                    intervals: row.intervals.length <= 0,
-                };
-            }
-
             // Per-row field errors, e.g. [{ doctor: true, maxPatients: false }, {...}]
             const rowErrors = computed(() => rows.value.map(rowRules));
             const hasFieldErrors = computed(() => rowErrors.value.some(e => Object.values(e).some(Boolean)));
@@ -259,6 +245,27 @@
                     });
                 });
             });
+
+            const dayOwnerTitle = (day) => {
+                const owner = rows.value.find(r => r.intervals.includes(day));
+                if (!owner) return '';
+                return 'Upptagen av ' + (owner.doctor.trim() || '???');
+            };
+
+            const rowRules = (row) => {
+                const raw = String(row.maxPatients ?? '').trim();
+                const maxPatients = raw === '' ? null : parseInt(raw);
+
+                // ignore below for now
+                const allDoctors = rows.value.map(r => r.doctor);
+                const hasDuplicateDoctors = new Set(allDoctors).size !== allDoctors.length
+
+                return {
+                    doctor: !row.doctor.trim(),
+                    maxPatients: maxPatients !== null && (isNaN(maxPatients) || maxPatients < 0),
+                    intervals: row.intervals.length <= 0,
+                };
+            }
 
             function addRow() {
                 rows.value.push(makeRow());
@@ -362,6 +369,7 @@
                 allIntervals,
                 missingDays,
                 hoverDay,
+                dayOwnerTitle,
                 addRow,
                 removeRow,
                 toggleRowInterval,
