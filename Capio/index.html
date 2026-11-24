@@ -18,9 +18,9 @@
             </colgroup>
             <thead>
                 <tr class="border-b-2 border-primary-light text-left text-sm text-primary">
-                    <th class="px-2 py-2 font-semibold">Läkare</th>
-                    <th class="px-2 py-2 font-semibold">Dagar</th>
-                    <th class="px-2 py-2 font-semibold">Antal</th>
+                    <th class="p-2 font-semibold">Läkare</th>
+                    <th class="p-2 font-semibold">Dagar</th>
+                    <th class="p-2 font-semibold">Antal</th>
                     <th></th>
                 </tr>
             </thead>
@@ -28,12 +28,12 @@
                 <template v-for="(row, i) in rows" :key="row.id">
                     <!-- Main row -->
                     <tr class="border-b border-surface">
-                        <td class="px-2 py-2">
+                        <td class="p-2">
                             <input type="text" v-model="row.doctor" placeholder="Namn"
                                 class="w-full rounded border border-primary-light px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary"
                                 :class="rowRules(row).doctor ? 'border-red-400' : ''">
                         </td>
-                        <td class="px-2 py-2">
+                        <td class="p-2">
                             <button type="button" @click="openRow = openRow === row.id ? null : row.id"
                                 class="flex w-full cursor-pointer items-center justify-between gap-2 rounded border px-2 py-1 text-left"
                                 :class="[
@@ -50,14 +50,14 @@
                                 <span class="text-xs text-primary">{{ openRow === row.id ? '▲' : '▼' }}</span>
                             </button>
                         </td>
-                        <td class="px-2 py-2">
+                        <td class="p-2">
                             <input type="number" v-model.number="row.maxPatients" min="0" placeholder="∞"
                                 class="w-full rounded border border-primary-light px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
                                 :class="rowRules(row).maxPatients
                                             ? 'border-red-400'
                                             : ''">
                         </td>
-                        <td class="px-2 py-2 text-center">
+                        <td class="p-2 text-center">
                             <button type="button" @click="removeRow(i)" aria-label="Ta bort"
                                 class="cursor-pointer rounded border border-primary-light px-2 py-1 leading-none hover:border-red-400 hover:bg-red-50 hover:text-red-600">
                                 ✕
